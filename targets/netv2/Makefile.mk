@@ -5,7 +5,7 @@ ifneq ($(PLATFORM),netv2)
 endif
 
 # Settings
-DEFAULT_TARGET = pcie
+DEFAULT_TARGET = video
 TARGET ?= $(DEFAULT_TARGET)
 
 # Image

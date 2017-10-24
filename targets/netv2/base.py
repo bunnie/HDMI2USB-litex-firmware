@@ -15,6 +15,8 @@ from gateware import info
 from targets.utils import csr_map_update, period_ns
 
 
+
+
 class _CRG(Module):
     def __init__(self, platform):
         self.clock_domains.cd_sys = ClockDomain()
@@ -121,8 +123,7 @@ class BaseSoC(SoCSDRAM):
 
         # common led
         self.sys_led = Signal()
-        self.pcie_led = Signal()
-        self.comb += platform.request("user_led", 0).eq(self.sys_led ^ self.pcie_led)
+        self.comb += platform.request("user_led", 0).eq(self.sys_led)
 
         #checker_port = self.sdram.crossbar.get_port(mode="read")
         #self.submodules.checker = LiteDRAMBISTChecker(checker_port)

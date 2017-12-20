@@ -120,7 +120,7 @@ image-flash: image image-flash-$(PLATFORM)
 image-flash-py: image
 	$(PYTHON) flash.py --mode=image
 
-.PHONY: image image-load image-flash image-flash-py
+.PHONY: image image-load image-flash image-flash-py image-flash-$(PLATFORM) image-load-$(PLATFORM)
 
 # Gateware - the stuff which configures the FPGA.
 # --------------------------------------
@@ -159,7 +159,7 @@ gateware-flash-py:
 gateware-clean:
 	rm -rf $(TARGET_BUILD_DIR)/gateware
 
-.PHONY: gateware gateware-load gateware-flash gateware-flash-py gateware-clean
+.PHONY: gateware gateware-load gateware-flash gateware-flash-py gateware-clean gateware-load-$(PLATFORM) gateware-flash-$(PLATFORM)
 
 # Firmware - the stuff which runs in the soft CPU inside the FPGA.
 # --------------------------------------
@@ -193,6 +193,11 @@ firmware-flash-py: firmware
 firmware-connect: firmware-connect-$(PLATFORM)
 	@true
 
+firmware-clear: firmware-clear-$(PLATFORM)
+	@true
+
+.PHONY: firmware-load-$(PLATFORM) firmware-flash-$(PLATFORM) firmware-connect-$(PLATFORM) firmware-clear-$(PLATFORM)
+
 firmware-clean:
 	rm -rf $(TARGET_BUILD_DIR)/software
 
@@ -207,7 +212,8 @@ bios: $(BIOS_FILE)
 bios-flash: $(BIOS_FILE) bios-flash-$(PLATFORM)
 	@true
 
-.PHONY: $(FIRMWARE_FILE) bios bios-flash
+.PHONY: $(FIRMWARE_FILE) bios bios-flash bios-flash-$(PLATFORM)
+
 
 # TFTP booting stuff
 # --------------------------------------
@@ -218,12 +224,21 @@ tftp: $(FIRMWARE_FILEBASE).bin
 
 tftpd_stop:
 	sudo true
-	sudo killall atftpd || true	# FIXME: This is dangerous...
+	sudo killall atftpd || sudo killall in.tftpd || true # FIXME: This is dangerous...
 
 tftpd_start:
 	mkdir -p $(TFTPD_DIR)
 	sudo true
-	sudo atftpd --verbose --bind-address $(TFTP_IPRANGE).100 --daemon --logfile /dev/stdout --no-fork --user $(shell whoami) $(TFTPD_DIR) &
+	@if command -v atftpd >/dev/null ; then \
+		echo "Starting aftpd"; \
+		sudo atftpd --verbose --bind-address $(TFTP_IPRANGE).100 --daemon --logfile /dev/stdout --no-fork --user $(shell whoami) $(TFTPD_DIR) & \
+	elif command -v in.tftpd >/dev/null; then \
+		echo "Starting in.tftpd"; \
+		sudo in.tftpd --verbose --listen --address $(TFTP_IPRANGE).100 --user $(shell whoami) -s $(TFTPD_DIR) & \
+	else \
+		echo "Cannot find an appropriate tftpd binary to launch the server."; \
+		false; \
+	fi
 
 .PHONY: tftp tftpd_stop tftpd_start
 
@@ -321,6 +336,8 @@ help:
 	@echo " make firmware-load     - *Temporarily* load the firmware onto a device"
 	@echo " make firmware-flash    - *Permanently* flash the firmware onto a device"
 	@echo " make firmware-connect  - *Connect* to the firmware running on a device"
+	@echo " make firmware-clear    - *Permanently* erase the firmware on the device,"
+	@echo "                          forcing TFTP/serial booting"
 	@echo ""
 	@echo "Image commands avaliable:"
 	@echo " make image             - Make an image containing gateware+bios+firmware"
@@ -331,6 +348,9 @@ help:
 	@make -s help-$(PLATFORM)
 	@echo " make clean             - Clean all build artifacts."
 
+reset: reset-$(PLATFORM)
+	@true
+
 clean:
 	rm build/cache.mk
 	rm -rf $(TARGET_BUILD_DIR)
@@ -339,7 +359,7 @@ clean:
 dist-clean:
 	rm -rf build
 
-.PHONY: flash help clean dist-clean
+.PHONY: flash help clean dist-clean help-$(PLATFORM) reset reset-$(PLATFORM)
 
 # Tests
 # --------------------------------------

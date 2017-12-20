@@ -20,9 +20,9 @@ source scripts/enter-env.sh || exit 1
 export GATEWARE_TIMEOUT=${GATEWARE_TIMEOUT:-2700}
 export GATEWARE_KILLOUT=$((GATEWARE_TIMEOUT+60))
 if [ -x /usr/bin/timeout ]; then
-	export GATEWARE_TIMEOUT_CMD="/usr/bin/timeout --preserve-status --kill-after=$GATEWARE_KILLOUT $GATEWARE_TIMEOUT"
+	export GATEWARE_TIMEOUT_CMD="/usr/bin/timeout --kill-after=${GATEWARE_KILLOUT}s ${GATEWARE_TIMEOUT}s"
 elif [ -x /usr/bin/timelimit ]; then
-	export GATEWARE_TIMEOUT_CMD="/usr/bin/timelimit -p -T $GATEWARE_KILLOUT -t $GATEWARE_TIMEOUT"
+	export GATEWARE_TIMEOUT_CMD="/usr/bin/timelimit -T $GATEWARE_KILLOUT -t $GATEWARE_TIMEOUT"
 fi
 
 ls -l $XILINX_DIR/opt/Xilinx/14.7/ISE_DS/ISE/bin/lin64/xreport
@@ -52,7 +52,14 @@ function build() {
 	export TARGET_BUILD_DIR=$PWD/build/${PLATFORM}_${TARGET}_${CPU}
 	export LOGFILE=$TARGET_BUILD_DIR/output.$(date +%Y%m%d-%H%M%S).log
 	echo "Using logfile $LOGFILE"
-
+	echo ""
+	echo ""
+	echo ""
+	echo "- Disk space free (before build)"
+	echo "---------------------------------------------"
+	df -h
+	DF_BEFORE_BUILD="$(($(stat -f --format="%a*%S" .)))"
+	echo "============================================="
 	echo ""
 	echo ""
 	echo ""
@@ -128,8 +135,8 @@ function build() {
 		# use timeout to prevent waiting here forever.
 		# FIXME: Should this be in the Makefile instead?
 		echo "Using $GATEWARE_TIMEOUT timeout (with '$GATEWARE_TIMEOUT_CMD')."
-		#export FILTER=$PWD/.travis/run-make-gateware-filter.py
-		$GATEWARE_TIMEOUT_CMD make gateware || return 1
+		export FILTER=$PWD/.travis/run-make-gateware-filter.py
+		$GATEWARE_TIMEOUT_CMD time --verbose make gateware || return 1
 	fi
 	echo "============================================="
 
@@ -175,23 +182,19 @@ function build() {
 
 		declare -a SAVE
 		declare -a SAVE
-		SAVE+="flash.bin" 				# Combined binary include gateware+bios+firmware
+		SAVE+="image*.bin" 				# Combined binary include gateware+bios+firmware
 		# Gateware output for using
-		SAVE+=("gateware/top.bit")			# Gateware in JTAG compatible format
-		SAVE+=("gateware/top.bin")			# Gateware in flashable format
-		# Gateware inputs for reference
-		SAVE+=("gateware/top.v")			# Gateware verilog code
-		SAVE+=("gateware/top.ucf")			# Gateware constraints
-		# Gateware tools reporting information - Xilinx ISE
-		SAVE+=("gateware/top_map.map")			# Report: Map
-		SAVE+=("gateware/top.pad")			# Report: Pinout
-		SAVE+=("gateware/top.par")			# Report: Place and route
-		SAVE+=("gateware/top.srp")			# Report: Synthasis
+		SAVE+=("gateware/")				# All gateware parts
 		# Software support files
 		SAVE+=("software/include/")			# Generated headers+config needed for QEmu, micropython, etc
 		SAVE+=("software/bios/bios.*")			# BIOS for soft-cpu inside the gateware
 		SAVE+=("software/firmware/firmware.*")		# HDMI2USB firmware for soft-cpu inside the gateware
 		SAVE+=("support/fx2.hex")			# Firmware for Cypress FX2 on some boards
+		# Extra firmware
+		SAVE+=("software/micropython/firmware.*")	# MicroPython
+		SAVE+=("software/linux/firmware.*")		# Linux
+		# CSV files with csr/litescope/etc descriptions
+		SAVE+=("test/")
 
 		for TO_SAVE in ${SAVE[@]}; do
 			echo
@@ -235,6 +238,17 @@ function build() {
 		echo "============================================="
 	fi
 
+	echo ""
+	echo ""
+	echo ""
+	echo "- Disk space free (after build)"
+	echo "---------------------------------------------"
+	df -h
+	echo ""
+	DF_AFTER_BUILD="$(($(stat -f --format="%a*%S" .)))"
+	awk "BEGIN {printf \"Build is using %.2f megabytes\n\",($DF_BEFORE_BUILD-$DF_AFTER_BUILD)/1024/1024}"
+	echo "============================================="
+
 	if [ ! -z "$CLEAN_CHECK" ]; then
 		echo ""
 		echo ""
@@ -268,7 +282,13 @@ declare -a FAILURES
 
 
 # Clone prebuilt repo to copy results into
-if [ -z "$GH_TOKEN" ]; then
+if [ ! -z "$TRAVIS_PULL_REQUEST" -a "$TRAVIS_PULL_REQUEST" != "false" ]; then
+	# Don't do prebuilt for a pull request.
+	echo ""
+	echo ""
+	echo ""
+	echo "- Pull request, so no prebuilt pushing."
+elif [ -z "$GH_TOKEN" ]; then
 	# Only if run by travis display error
 	if [ ! -z $TRAVIS_BUILD_NUMBER  ]; then
 		echo ""
@@ -285,7 +305,6 @@ else
 	# Look at repo we are running in to determine where to try pushing to if in a fork
 	PREBUILT_REPO=HDMI2USB-firmware-prebuilt
 	PREBUILT_REPO_OWNER=$(echo $TRAVIS_REPO_SLUG|awk -F'/' '{print $1}')
-	echo "PREBUILT_REPO_OWNER = $PREBUILT_REPO_OWNER"
 	GIT_REVISION=$TRAVIS_BRANCH/$(git describe)
 	ORIG_COMMITTER_NAME=$(git log -1 --pretty=%an)
 	ORIG_COMMITTER_EMAIL=$(git log -1 --pretty=%ae)
@@ -295,31 +314,57 @@ else
 	echo "- Uploading built files to github.com/$PREBUILT_REPO_OWNER/$PREBUILT_REPO"
 	echo "---------------------------------------------"
 	export PREBUILT_DIR="/tmp/HDMI2USB-firmware-prebuilt"
-	git clone https://$GH_TOKEN@github.com/$PREBUILT_REPO_OWNER/${PREBUILT_REPO}.git $PREBUILT_DIR
+	(
+		# Do a sparse, shallow checkout to keep disk space usage down.
+		mkdir -p $PREBUILT_DIR
+		cd $PREBUILT_DIR
+		git init > /dev/null
+		git config core.sparseCheckout true
+		git remote add origin https://$GH_TOKEN@github.com/$PREBUILT_REPO_OWNER/${PREBUILT_REPO}.git
+		cat > .git/info/sparse-checkout <<EOF
+*.md
+archive/*
+archive/*/*
+!archive/*/*/*
+archive/**/sha256sum.txt
+**/stable
+**/testing
+**/unstable
+EOF
+		git fetch --depth 1 origin master
+		git checkout master
+		echo ""
+		PREBUILT_DIR_DU=$(du -h -s . | sed -e's/[ \t]*\.$//')
+		echo "Prebuilt repo checkout is using $PREBUILT_DIR_DU"
+	)
 	echo "============================================="
 fi
 
+if [ -z "$CPUS" ]; then
+	if [ -z "$CPU" ]; then
+		#CPUS="lm32 or1k riscv32"
+		CPUS="lm32 or1k"
+	else
+		CPUS="$CPU"
+	fi
+fi
 
+START_TARGET="$TARGET"
+START_TARGETS="$TARGETS"
 for PLATFORM in $PLATFORMS; do
-	if [ -z "$TARGETS" ]; then
+	if [ -z "$START_TARGETS" ]; then
 		if [ -z "$SKIP_TARGETS" ]; then
 			SKIP_TARGETS="__"
 		fi
-		if [ -z "$TARGET" -a -z "$TARGETS" ]; then
-			TARGETS=$(ls targets/${PLATFORM}/*.py | grep -v "__" | grep -v "$SKIP_TARGETS" | sed -e"s+targets/${PLATFORM}/++" -e"s/.py//")
+		if [ ! -z "$START_TARGETS" ]; then
+			TARGETS="$START_TARGETS"
+		elif [ ! -z "$START_TARGET" ]; then
+			TARGETS="$START_TARGET"
 		else
-			TARGETS="$TARGET"
+			TARGETS=$(ls targets/${PLATFORM}/*.py | grep -v "__" | grep -v "$SKIP_TARGETS" | sed -e"s+targets/${PLATFORM}/++" -e"s/.py//")
 		fi
 	fi
 
-	if [ -z "$CPUS" ]; then
-		if [ -z "$CPU" ]; then
-			#CPUS="lm32 or1k riscv32"
-			CPUS="lm32"
-		else
-			CPUS="$CPU"
-		fi
-	fi
 	echo ""
 	echo ""
 	echo ""
@@ -347,16 +392,20 @@ if [ ! -z "$PREBUILT_DIR" ]; then
 	cd $PREBUILT_DIR
 	for i in 1 2 3 4 5 6 7 8 9 10; do	# Try 10 times.
 		if [ "$TRAVIS_BRANCH" = "master" ]; then
+			echo "Pushing with PLATFORMS='$PLATFORMS'"
+			echo
 			for PLATFORM in $PLATFORMS; do
 				(
 				if [ ! -d "$PLATFORM/firmware" ]; then
+					echo "No firmware directory for $PLATFORM, skipping."
 					continue
 				fi
 				echo
 				echo "Updating unstable link (Try $i)"
 				echo "---------------------------------------------"
 				cd $PLATFORM/firmware
-				LATEST="$(ls ../../archive/master/ | tail -n 1)"
+				LATEST="$(ls ../../archive/master/ | sort -V | tail -n 1)"
+				echo "Latest firmware is $LATEST (current is $(readlink unstable))"
 				HDMI2USB_FIRMWARE="../../archive/master/$LATEST/$PLATFORM/hdmi2usb/lm32"
 				echo "Checking for '$HDMI2USB_FIRMWARE'"
 				if [ -d "$HDMI2USB_FIRMWARE" -a "$(readlink unstable)" != "$HDMI2USB_FIRMWARE" ]; then
@@ -367,12 +416,14 @@ if [ ! -z "$PREBUILT_DIR" ]; then
 						-m "Updating unstable link (Travis build #$TRAVIS_BUILD_NUMBER of $GIT_REVISION for PLATFORM=$PLATFORM TARGET=$TARGET CPU=$CPU)" \
 						-m "" \
 						-m "From https://github.com/$TRAVIS_REPO_SLUG/tree/$TRAVIS_COMMIT" \
-						-m "$TRAVIS_COMIT_MESSAGE"
+						-m "$TRAVIS_COMMIT_MESSAGE"
 				else
 					echo "Not updating $PLATFORM"
 				fi
 				)
 			done
+		else
+			echo "Not updating link as on branch '$TRAVIS_BRANCH'"
 		fi
 		echo
 		echo "Merging (Try $i)"
@@ -397,6 +448,21 @@ if [ ! -z "$PREBUILT_DIR" ]; then
 	echo "Push finished!"
 	)
 fi
+
+echo ""
+echo ""
+echo ""
+echo "Errors from failures..."
+echo "============================================="
+
+for F in $(find . -name 'output.*.log'); do
+	echo ""
+	echo ""
+	echo $F
+	echo "---------------------------------------------"
+	cat $F
+	echo "---------------------------------------------"
+done
 
 echo ""
 echo ""
@@ -428,3 +494,4 @@ if [ ${#FAILURES[@]} -ne 0 ]; then
 else
 	echo "All builds succeeded! \\o/"
 fi
+

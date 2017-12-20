@@ -9,9 +9,9 @@ fi
 CALLED=$_
 [[ "${BASH_SOURCE[0]}" != "${0}" ]] && SOURCED=1 || SOURCED=0
 
-SETUP_SRC=$(realpath ${BASH_SOURCE[0]})
-SETUP_DIR=$(dirname $SETUP_SRC)
-TOP_DIR=$(realpath $SETUP_DIR/..)
+SETUP_SRC="$(realpath ${BASH_SOURCE[0]})"
+SETUP_DIR="$(dirname "${SETUP_SRC}")"
+TOP_DIR="$(realpath "${SETUP_DIR}/..")"
 
 if [ $SOURCED = 1 ]; then
 	echo "You must run this script, rather then try to source it."
@@ -28,6 +28,20 @@ fi
 if [ ! -z "$SETTINGS_FILE" -o ! -z "$XILINX" ]; then
 	echo "You appear to have sourced the Xilinx ISE settings, these are incompatible with setting up."
 	echo "Please exit this terminal and run again from a clean shell."
+	exit 1
+fi
+
+# Conda does not support ' ' in the path (it bails early).
+if echo "${SETUP_DIR}" | grep -q ' '; then
+	echo "You appear to have whitespace characters in the path to this script."
+	echo "Please move this repository to another path that does not contain whitespace."
+	exit 1
+fi
+
+# Conda does not support ':' in the path (it fails to install python).
+if echo "${SETUP_DIR}" | grep -q ':'; then
+	echo "You appear to have ':' characters in the path to this script."
+	echo "Please move this repository to another path that does not contain this character."
 	exit 1
 fi
 
@@ -70,7 +84,10 @@ if [ ! -z "$XILINX_PASSPHRASE" ]; then
 			# This setup was taken from https://github.com/m-labs/artiq/blob/master/.travis/get-xilinx.sh
 			wget --no-verbose -c http://xilinx.timvideos.us/${XILINX_TAR_FILE}.gpg
 			cat $XILINX_PASSPHRASE_FILE | gpg --batch --passphrase-fd 0 ${XILINX_TAR_FILE}.gpg
-			tar -xjvf $XILINX_TAR_FILE
+			tar -xjf $XILINX_TAR_FILE
+
+			# Remove the tar file to free up space.
+			rm ${XILINX_TAR_FILE}*
 
 			# FIXME: Hacks to try and make Vivado work.
 			mkdir -p $XILINX_DIR/opt/Xilinx/Vivado/2017.3/scripts/rt/data/svlog/sdbs
@@ -164,11 +181,15 @@ export PATH=$CONDA_DIR/bin:$PATH:/sbin
 (
 	echo
 	echo "Installing conda (self contained Python environment with binary package support)"
-	if [ ! -d $CONDA_DIR ]; then
+	if [[ ! -e $CONDA_DIR/bin/conda ]]; then
 		cd $BUILD_DIR
-		wget --no-verbose -c https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+		# FIXME: Get the miniconda people to add a "self check" mode
+		wget --no-verbose --continue https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
 		chmod a+x Miniconda3-latest-Linux-x86_64.sh
-		./Miniconda3-latest-Linux-x86_64.sh -p $CONDA_DIR -b
+		# -p to specify the install location
+		# -b to enable batch mode (no prompts)
+		# -f to not return an error if the location specified by -p already exists
+		./Miniconda3-latest-Linux-x86_64.sh -p $CONDA_DIR -b -f
 		conda config --set always_yes yes --set changeps1 no
 		conda update -q conda
 	fi
@@ -180,7 +201,7 @@ echo
 echo "Installing python3.5"
 conda install python=3.5
 check_version python 3.5
-echo "python ==3.5.4" > build/conda/conda-meta/pinned # Make sure it stays at version 3.5
+echo "python ==3.5.4" > $CONDA_DIR/conda-meta/pinned # Make sure it stays at version 3.5
 
 echo ""
 echo "Installing binaries into environment"

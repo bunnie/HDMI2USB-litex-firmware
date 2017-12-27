@@ -10,6 +10,9 @@ from litedram.modules import MT41J128M16
 from litedram.phy import a7ddrphy
 from litedram.core import ControllerSettings
 
+from litedram.frontend.bist import LiteDRAMBISTGenerator
+from litedram.frontend.bist import LiteDRAMBISTChecker
+
 from gateware import info
 
 from targets.utils import csr_map_update, period_ns
@@ -27,7 +30,8 @@ class _CRG(Module):
 
         clk50 = platform.request("clk50")
         clk50.attr.add("keep")
-        #platform.add_period_constraint(clk50, period_ns(50e6))
+#        platform.add_period_constraint(clk50, period_ns(50e6))
+        
         self.rst = Signal()
 
         pll_locked = Signal()
@@ -91,12 +95,12 @@ class BaseSoC(SoCSDRAM):
     )
     csr_map_update(SoCSDRAM.csr_map, csr_peripherals)
 
-    def __init__(self, platform, **kwargs):
+    def __init__(self, platform, with_sdram_bist=True, bist_async=True, bist_random=True, **kwargs):
         clk_freq = int(100e6)
         SoCSDRAM.__init__(self, platform, clk_freq,
             integrated_rom_size=0x8000,
             integrated_sram_size=0x8000,
-            ident="NeTV2 LiteX Base SoC",
+            ident="NeTV2MVP LiteX Base SoC",
             **kwargs)
 
         self.submodules.crg = _CRG(platform)
@@ -123,19 +127,20 @@ class BaseSoC(SoCSDRAM):
 
         # common led
         self.sys_led = Signal()
-        self.comb += platform.request("user_led", 0).eq(self.sys_led)
+        self.comb += platform.request("fpga_led1", 0).eq(self.sys_led)
 
-        #checker_port = self.sdram.crossbar.get_port(mode="read")
-        #self.submodules.checker = LiteDRAMBISTChecker(checker_port)
 
-        # led blink
-        #counter = Signal(32)
-        #self.sync.clk125 += counter.eq(counter + 1)
-        #self.comb += platform.request("user_led", 0).eq(counter[26])
+        # sdram bist
+        if with_sdram_bist:
+           generator_port = self.sdram.crossbar.get_port(cd="sys") # mode="write"
+           self.submodules.generator = LiteDRAMBISTGenerator(generator_port, random=bist_random)
+        
+           checker_port = self.sdram.crossbar.get_port(cd="sys") # mode="read"
+           self.submodules.checker = LiteDRAMBISTChecker(checker_port, random=bist_random)
 
         # sys led
         sys_counter = Signal(32)
-        self.sync += sys_counter.eq(sys_counter + 1)
+        self.sync.clk100 += sys_counter.eq(sys_counter + 1)
         self.comb += self.sys_led.eq(sys_counter[26])
 
 

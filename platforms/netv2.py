@@ -3,9 +3,11 @@ from litex.build.xilinx import XilinxPlatform, VivadoProgrammer
 
 _io = [
     # U11F
-    ("clk50", 0, Pins("J19"), IOStandard("LVCMOS33")),
+    ("clk50", 0, Pins("J19"), IOStandard("LVCMOS33")), # sysclk, 50MHz
 
-    ("user_led", 0, Pins("M21"), IOStandard("LVCMOS33")),
+    ("fpga_led0", 0, Pins("M21"), IOStandard("LVCMOS33")),
+    ("fpga_led1", 0, Pins("N20"), IOStandard("LVCMOS33")),
+    ("fpga_led2", 0, Pins("L21"), IOStandard("LVCMOS33")),
 
     ("serial", 0,
         Subsignal("tx", Pins("E14")), # MCU_RX
@@ -43,26 +45,26 @@ _io = [
     ),
 
     ("hdmi_in", 0,
-        Subsignal("clk_p", Pins("L19"), IOStandard("TMDS_33")),
+        Subsignal("clk_p", Pins("L19"), IOStandard("TMDS_33")),    # inverted
         Subsignal("clk_n", Pins("L20"), IOStandard("TMDS_33")),
-        Subsignal("data0_p", Pins("K21"), IOStandard("TMDS_33")),
+        Subsignal("data0_p", Pins("K21"), IOStandard("TMDS_33")),  # inverted
         Subsignal("data0_n", Pins("K22"), IOStandard("TMDS_33")),
-        Subsignal("data1_p", Pins("J20"), IOStandard("TMDS_33")),
+        Subsignal("data1_p", Pins("J20"), IOStandard("TMDS_33")),  # inverted
         Subsignal("data1_n", Pins("J21"), IOStandard("TMDS_33")),
-        Subsignal("data2_p", Pins("J22"), IOStandard("TMDS_33")),
+        Subsignal("data2_p", Pins("J22"), IOStandard("TMDS_33")),  # inverted
         Subsignal("data2_n", Pins("H22"), IOStandard("TMDS_33")),
         Subsignal("scl", Pins("T18"), IOStandard("LVCMOS33")), 
         Subsignal("sda", Pins("V18"), IOStandard("LVCMOS33")), 
     ),
 
     ("hdmi_ov", 0,
-        Subsignal("clk_p", Pins("Y18"), IOStandard("TMDS_33")),
+        Subsignal("clk_p", Pins("Y18"), IOStandard("TMDS_33")),    # inverted
         Subsignal("clk_n", Pins("Y19"), IOStandard("TMDS_33")),
-        Subsignal("data0_p", Pins("AA18"), IOStandard("TMDS_33")),
+        Subsignal("data0_p", Pins("AA18"), IOStandard("TMDS_33")), # non-inverted
         Subsignal("data0_n", Pins("AB18"), IOStandard("TMDS_33")),
-        Subsignal("data1_p", Pins("AA19"), IOStandard("TMDS_33")),
+        Subsignal("data1_p", Pins("AA19"), IOStandard("TMDS_33")), # inverted
         Subsignal("data1_n", Pins("AB20"), IOStandard("TMDS_33")),
-        Subsignal("data2_p", Pins("AB21"), IOStandard("TMDS_33")),
+        Subsignal("data2_p", Pins("AB21"), IOStandard("TMDS_33")), # inverted
         Subsignal("data2_n", Pins("AB22"), IOStandard("TMDS_33")),
         Subsignal("scl", Pins("W17"), IOStandard("LVCMOS33")), 
         Subsignal("sda", Pins("R17"), IOStandard("LVCMOS33")), 
@@ -70,15 +72,17 @@ _io = [
 
 # TX0
     ("hdmi_out", 0,
-        Subsignal("clk_p", Pins("W19"), IOStandard("TMDS_33")),
+        Subsignal("clk_p", Pins("W19"), IOStandard("TMDS_33")),   # inverted
         Subsignal("clk_n", Pins("W20"), IOStandard("TMDS_33")),
-        Subsignal("data0_p", Pins("W21"), IOStandard("TMDS_33")),
+        Subsignal("data0_p", Pins("W21"), IOStandard("TMDS_33")), # non-inverted
         Subsignal("data0_n", Pins("W22"), IOStandard("TMDS_33")),
-        Subsignal("data1_p", Pins("U20"), IOStandard("TMDS_33")),
+        Subsignal("data1_p", Pins("U20"), IOStandard("TMDS_33")), # non-inverted
         Subsignal("data1_n", Pins("V20"), IOStandard("TMDS_33")),
-        Subsignal("data2_p", Pins("T21"), IOStandard("TMDS_33")),
+        Subsignal("data2_p", Pins("T21"), IOStandard("TMDS_33")), # non-inverted
         Subsignal("data2_n", Pins("U21"), IOStandard("TMDS_33")),
-        IOStandard("TMDS_33")
+#        Subsignal("scl", Pins("T18"), IOStandard("I2C")), 
+#        Subsignal("sda", Pins("V18"), IOStandard("I2C")), 
+        Subsignal("hpd_notif", Pins("U17"), IOStandard("LVCMOS33"))
     ),
 
 # TX1
@@ -95,8 +99,21 @@ _io = [
 #    ),
 
     ("hdmi_sda_over_up", 0, Pins("G20"), IOStandard("LVCMOS33")),
-    ("hdmi_sda_over_dn", 0, Pins("F20"), IOStandard("LVCMOS33")),
-    ("hdmi_hdp_over", 0, Pins("M22"), IOStandard("LVCMOS33")),
+    ("hdmi_sda_over_dn", 0, Pins("F20"), IOStandard("LVCMOS33")), # must be mutex with the above
+
+    ("hdmi_rx0_forceunplug", 0, Pins("M22"), IOStandard("LVCMOS33")), # forces an HPD on the RX0/TX0 path
+    ("hdmi_rx0_forceplug", 0, Pins("N22"), IOStandard("LVCMOS33")),   # this needs to be mutex with the above
+
+    # mapped into TX0
+#    ("hdmi_tx0_hpd_n", 0, Pins("U17"), IOStandard("LVCMOS33")),  # TX0 is the external port
+    
+    ("hdmi_tx1_hpd_n", 0, Pins("U18"), IOStandard("LVCMOS33")),  # this is the internal hdmi-D port
+
+    ("hdmi_tx1_cec", 0, Pins("P17"), IOStandard("LVCMOS33")),  # tx1/rx1 path
+    ("hdmi_tx0_cec", 0, Pins("P20"), IOStandard("LVCMOS33")),  # tx0/rx0 path
+    
+    ("hdmi_ov0_cec", 0, Pins("P19"), IOStandard("LVCMOS33")),  # dedicated to the overlay input
+    ("hdmi_ov0_hpd_n", 0, Pins("V17"), IOStandard("LVCMOS33")), # if the overlay input is plugged in
 
 ]
 

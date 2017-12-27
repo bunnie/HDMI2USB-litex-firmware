@@ -505,7 +505,7 @@ static void fb_set_clock(unsigned int pixel_clock)
 	while(!(hdmi_out0_driver_clocking_status_read() & CLKGEN_STATUS_PROGDONE));
 	while(!(hdmi_out0_driver_clocking_status_read() & CLKGEN_STATUS_LOCKED));
 #elif CSR_HDMI_OUT0_DRIVER_CLOCKING_MMCM_RESET_ADDR
-	fb_clkgen_write(clock_m, clock_d);
+	//fb_clkgen_write(clock_m, clock_d);
 #endif
 }
 

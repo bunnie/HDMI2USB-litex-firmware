@@ -25,6 +25,7 @@ int hdmi_out0_mmcm_read(int adr) {
 
 #ifdef CSR_HDMI_IN0_CLOCKING_MMCM_RESET_ADDR
 void hdmi_in0_clocking_mmcm_write(int adr, int data) {
+  printf( "hdmi_in0_clocking_set\n" );
 	hdmi_in0_clocking_mmcm_adr_write(adr);
 	hdmi_in0_clocking_mmcm_dat_w_write(data);
 	hdmi_in0_clocking_mmcm_write_write(1);

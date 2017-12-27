@@ -8,9 +8,9 @@
 #include <time.h>
 #include <console.h>
 #include "ci.h"
+#include <uart.h>
 
-
-#define test_size 64*1024*1024
+#define test_size 128*1024*1024
 
 unsigned int ticks;
 unsigned int speed;
@@ -26,7 +26,13 @@ static void busy_wait(unsigned int ds)
 }
 
 void bist_test(void) {
-	while(readchar_nonblock() == 0) {
+  printf( "at bist_test\n" );
+  // empty any characters pending
+  while(readchar_nonblock() != 0) {
+    printf( "readchar_nonblock(): %d\n", readchar_nonblock() );
+    printf( "emptying buffer: %02x\n", (unsigned int) uart_read() );
+  }
+	do {
 			// write
 			printf("writing %d Mbytes...", test_size/(1024*1024));
 			generator_reset_write(1);
@@ -81,7 +87,7 @@ void bist_test(void) {
 
 			// delay
 			busy_wait(10);
-	}
+	} while(readchar_nonblock() == 0);
 
 }
 

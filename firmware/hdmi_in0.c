@@ -387,7 +387,7 @@ int hdmi_in0_phase_startup(int freq)
 static void hdmi_in0_check_overflow(void)
 {
 	if(hdmi_in0_frame_overflow_read()) {
-		wprintf("dvisampler0: FIFO overflow\r\n");
+	  //		wprintf("dvisampler0: FIFO overflow\r\n");
 		hdmi_in0_frame_overflow_write(1);
 	}
 }

@@ -19,14 +19,14 @@ unsigned int pattern_framebuffer_base(void) {
 }
 
 static const unsigned int color_bar[8] = {
-	YCBCR422_WHITE,
-	YCBCR422_YELLOW,
-	YCBCR422_CYAN,
-	YCBCR422_GREEN,
-	YCBCR422_PURPLE,
-	YCBCR422_RED,
-	YCBCR422_BLUE,
-	YCBCR422_BLACK
+	RGB_WHITE,
+	RGB_YELLOW,
+	RGB_CYAN,
+	RGB_GREEN,
+	RGB_PURPLE,
+	RGB_RED,
+	RGB_BLUE,
+	RGB_BLACK
 };
 
 static const unsigned char font5x7[] = {
@@ -154,7 +154,7 @@ static void pattern_draw_text_color(int x, int y, char *ptr, long background_col
 }
 
 static void pattern_draw_text(int x, int y, char *ptr) {
-	pattern_draw_text_color(x, y, ptr, YCBCR422_WHITE, YCBCR422_BLACK);
+	pattern_draw_text_color(x, y, ptr, RGB_WHITE, RGB_BLACK);
 }
 
 void pattern_next(void) {
@@ -191,24 +191,24 @@ void pattern_fill_framebuffer(int h_active, int w_active)
 
 	// draw a border around that.
 	for (i=0; i<h_active*2; i++) {
-		framebuffer[i] = YCBCR422_WHITE;
+		framebuffer[i] = RGB_WHITE;
 	}
 	
 	for (i=(w_active-4)*h_active*2/4; i<h_active*w_active*2/4; i++) {
-		framebuffer[i] = YCBCR422_WHITE;
+		framebuffer[i] = RGB_WHITE;
 	}
 	
 	for (i=0; i<w_active*2; i++) {
 		// do the left bar
 		for (j=0; j<2; j++) {
-			framebuffer[(i*h_active)+j] = YCBCR422_WHITE;
-			framebuffer[(i*h_active)+j + (1*h_active/2)] = YCBCR422_WHITE;
+			framebuffer[(i*h_active)+j] = RGB_WHITE;
+			framebuffer[(i*h_active)+j + (1*h_active/2)] = RGB_WHITE;
 		}
 		
 		// do the right bar
 		for (j=h_active-2; j<h_active; j++) {
-			framebuffer[(i*h_active)+j] = YCBCR422_WHITE;
-			framebuffer[(i*h_active)+j + (1*h_active/2)] = YCBCR422_WHITE;
+			framebuffer[(i*h_active)+j] = RGB_WHITE;
+			framebuffer[(i*h_active)+j + (1*h_active/2)] = RGB_WHITE;
 		}		
 	}
 
@@ -232,15 +232,15 @@ void pattern_fill_framebuffer(int h_active, int w_active)
 	pattern_draw_text(1, line, "Hi! I am HDMI2USB ");
 	line++;
 	// Line 6+7 - Want...
-	pattern_draw_text_color(1, line, "Want to hack on FOSS video capture systems?", YCBCR422_BLUE, YCBCR422_WHITE);
+	pattern_draw_text_color(1, line, "Want to hack on FOSS video capture systems?", RGB_BLUE, RGB_WHITE);
 	line++;
-	pattern_draw_text_color(1, line, "Get in touch with us! #timvideos on Freenode IRC", YCBCR422_RED, YCBCR422_WHITE);
+	pattern_draw_text_color(1, line, "Get in touch with us! #timvideos on Freenode IRC", RGB_RED, RGB_WHITE);
 	line++;
 	// Line 8 - URLs..
 	pattern_draw_text(1, line, "code.timvideos.us / enjoy-digital.fr");
-	pattern_draw_text_color(6, line, "tim", YCBCR422_WHITE, YCBCR422_RED);
-	pattern_draw_text_color(9, line, "videos", YCBCR422_WHITE, YCBCR422_BLUE);
-	pattern_draw_text_color(27, line, "digital", YCBCR422_WHITE, YCBCR422_CYAN);
+	pattern_draw_text_color(6, line, "tim", RGB_WHITE, RGB_RED);
+	pattern_draw_text_color(9, line, "videos", RGB_WHITE, RGB_BLUE);
+	pattern_draw_text_color(27, line, "digital", RGB_WHITE, RGB_CYAN);
 #endif
 
 	flush_l2_cache();

@@ -39,6 +39,7 @@ int hdmi_in0_clocking_mmcm_read(int adr) {
 }
 
 static void hdmi_in_0_config_30_60mhz(void) {
+  printf( "in0: config 30-60MHz\n" );
 	hdmi_in0_clocking_mmcm_write(0x14, 0x1000 | (10<<6) | 10); /* clkfbout_mult  = 20 */
 	hdmi_in0_clocking_mmcm_write(0x08, 0x1000 | (10<<6) | 10); /* clkout0_divide = 20 */
 	hdmi_in0_clocking_mmcm_write(0x0a, 0x1000 |  (8<<6) |  8); /* clkout1_divide = 16 */
@@ -47,6 +48,7 @@ static void hdmi_in_0_config_30_60mhz(void) {
 }
 
 static void hdmi_in_0_config_60_120mhz(void) {
+  printf( "in0: config 60-120MHz\n" );
 	hdmi_in0_clocking_mmcm_write(0x14, 0x1000 |  (5<<6) | 5); /* clkfbout_mult  = 10 */
 	hdmi_in0_clocking_mmcm_write(0x08, 0x1000 |  (5<<6) | 5); /* clkout0_divide = 10 */
 	hdmi_in0_clocking_mmcm_write(0x0a, 0x1000 |  (4<<6) | 4); /* clkout1_divide =  8 */
@@ -55,6 +57,7 @@ static void hdmi_in_0_config_60_120mhz(void) {
 }
 
 static void hdmi_in_0_config_120_240mhz(void) {
+  printf( "in0: config 120-240MHz\n" );
 	hdmi_in0_clocking_mmcm_write(0x14, 0x1000 |  (2<<6) | 3);  /* clkfbout_mult  = 5 */
 	hdmi_in0_clocking_mmcm_write(0x08, 0x1000 |  (2<<6) | 3);  /* clkout0_divide = 5 */
 	hdmi_in0_clocking_mmcm_write(0x0a, 0x1000 |  (2<<6) | 2);  /* clkout1_divide = 4 */
@@ -64,6 +67,9 @@ static void hdmi_in_0_config_120_240mhz(void) {
 
 void mmcm_config_for_clock(int freq)
 {
+  printf( "pre-config dump\n" );
+  mmcm_dump();
+#if 0
 	/*
 	 * FIXME: we also need to configure phase detector
 	 */
@@ -77,6 +83,9 @@ void mmcm_config_for_clock(int freq)
 		hdmi_in_0_config_120_240mhz();
 	else
 		printf("Frequency too high for input MMCMs\r\n");
+  printf( "post-config dump\n" );
+  mmcm_dump();
+#endif
 }
 #endif
 

@@ -39,7 +39,7 @@ class VideoSoC(BaseSoC):
         # hdmi out 0
         hdmi_out0_pads = platform.request("hdmi_out", 0)
 
-        mode = "rgb"
+        mode = "ycbcr422"
 
         if mode == "ycbcr422":
             hdmi_out0_dram_port = self.sdram.crossbar.get_port(mode="read", dw=16, cd="hdmi_out0_pix", reverse=True)
@@ -95,12 +95,12 @@ class VideoSoC(BaseSoC):
             self.hdmi_in0.clocking.cd_pix5x.clk)
 
         # break out the locked signal to an LED
-#        self.led2 = Signal()
-#        self.comb += platform.request("fpga_led2", 0).eq(self.led2)
-#        self.comb += self.led2.eq(self.hdmi_in0.clocking.locked)
+##        self.led2 = Signal()
+##        self.comb += platform.request("fpga_led2", 0).eq(self.led2)
+##        self.comb += self.led2.eq(self.hdmi_in0.clocking.locked)
+
         self.comb += platform.request("fpga_led2", 0).eq(self.hdmi_in0.clocking.locked)
 
-        
         # hdmi in 1
         # hdmi_in1_pads = platform.request("hdmi_ov", 0)
 

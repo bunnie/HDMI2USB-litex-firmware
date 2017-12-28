@@ -410,6 +410,7 @@ static void fb_clkgen_write(int cmd, int data)
 // Artix-7 MMCM clocking
 static void fb_clkgen_write(int m, int d)
 {
+  wprintf( "clkgen_write with m %d, d %d\n", m, d );
 	/* clkfbout_mult = m */
 	if(m%2)
 		hdmi_out0_mmcm_write(0x14, 0x1000 | ((m/2)<<6) | (m/2 + 1));

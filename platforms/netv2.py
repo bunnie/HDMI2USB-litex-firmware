@@ -79,10 +79,10 @@ _io = [
         Subsignal("data1_p", Pins("U20"), IOStandard("TMDS_33")), # non-inverted
         Subsignal("data1_n", Pins("V20"), IOStandard("TMDS_33")),
         Subsignal("data2_p", Pins("T21"), IOStandard("TMDS_33")), # non-inverted
-        Subsignal("data2_n", Pins("U21"), IOStandard("TMDS_33")),
+        Subsignal("data2_n", Pins("U21"), IOStandard("TMDS_33"))
 #        Subsignal("scl", Pins("T18"), IOStandard("I2C")), 
 #        Subsignal("sda", Pins("V18"), IOStandard("I2C")), 
-        Subsignal("hpd_notif", Pins("U17"), IOStandard("LVCMOS33"))
+#        Subsignal("hpd_notif", Pins("U17"), IOStandard("LVCMOS33"))
     ),
 
 # TX1

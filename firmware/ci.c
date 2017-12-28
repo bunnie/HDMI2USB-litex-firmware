@@ -181,6 +181,9 @@ static void help_debug(void)
 	wputs("  debug cas buttons clear        - clear any asserted buttons status");
 #endif
 }
+static void help_cr(void) {
+	wputs("  cr <addr>                      - CSR read at addr");
+}
 
 static void ci_help(void)
 {
@@ -223,6 +226,8 @@ static void ci_help(void)
 	wputs("");
 #endif
 	help_debug();
+	wputs("");
+	help_cr();
 }
 
 static char *readstr(void)
@@ -975,6 +980,11 @@ void ci_prompt(void)
 	wprintf("H2U %s>", uptime_str());
 }
 
+void dump_csr( unsigned long adr );
+void dump_csr( unsigned long adr ) {
+  wprintf("CSR @ 0x%08lx: 0x%02x\n", adr, (unsigned char) MMPTR(adr) );
+}
+
 void ci_service(void)
 {
 	char *str;
@@ -1293,6 +1303,9 @@ void ci_service(void)
 			}
 #endif
 #endif
+		} else if(strcmp(token, "cr") == 0) {
+		  token = get_token(&str);
+		  dump_csr( strtoul(token, NULL, 16) );
 		} else
 			help_debug();
 
